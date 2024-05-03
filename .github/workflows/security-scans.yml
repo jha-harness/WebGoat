@@ -47,47 +47,67 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: results.sarif
-          
-  endor-labs-scan:
+
+  jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Runner size impacts CodeQL analysis time. To learn more, please see:
+    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+    #   - https://gh.io/supported-runners-and-hardware-resources
+    #   - https://gh.io/using-larger-runners (GitHub.com only)
+    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
     permissions:
-      security-events: write # Used to upload sarif artifact to GitHub
-      contents: read # Used to checkout a private repository by actions/checkout.
-      actions: read # Required for private repositories to upload sarif files. GitHub Advanced Security licenses are required.
-      id-token: write # Used for keyless authentication to Endor Labs
-    runs-on: ubuntu-latest
+      # required for all workflows
+      security-events: write
+
+      # required to fetch internal or private CodeQL packs
+      packages: read
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    #### Package Build Instructions
-    ### Use this section to define the build steps used by your software package.
-    ### Endor Labs builds your software for you where possible but the required build tools must be made available.
-    # - name: Setup Java
-    #   uses: actions/setup-java@v3
-    #   with:
-    #     distribution: 'microsoft'
-    #     java-version: '17'
-    # - name: Build Package
-    #   run: mvn clean install
-    - name: Endor Labs scan pull request
-      if: github.event_name == 'pull_request'
-      uses: endorlabs/github-action@v1.1.3
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
       with:
-        namespace: "example" # Modify the namespace to your Endor Labs tenant namespace.
-        sarif_file: findings.sarif
-    - name: Endor Labs scan monitor
-      if: github.event_name == 'push'
-      uses: endorlabs/github-action@v1.1.3
+        languages: java-kotlin
+        build-mode: manual
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+
+        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+        # queries: security-extended,security-and-quality
+
+    - if: matrix.build-mode == 'manual'
+    -   name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+            distribution: 'temurin'
+            java-version: 17
+            architecture: x64
+    -   name: Cache Maven packages
+        uses: actions/cache@v4.0.0
+        with:
+            path: ~/.m2
+            key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+            restore-keys: ${{ runner.os }}-m2-
+    -   name: Build with Maven
+        run: mvn --no-transfer-progress verify
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
       with:
-        namespace: "example" # Modify the namespace to your Endor Labs tenant namespace.
-        enable_pr_comments: true # Enable endorctl to write pr comments
-        github_token: ${{ secrets.GITHUB_TOKEN }} # Required for endorctl to write pr comments
-        scan_dependencies: true
-        scan_secrets: true
-        sarif_file: findings.sarif
-    - name: Upload SARIF to github
-      uses: github/codeql-action/upload-sarif@9885f86fab4879632b7e44514f19148225dfbdcd
-      with:
-        sarif_file: findings.sarif
+        category: "/language:${{matrix.language}}"
 
   lint:
     name: DevSkim
