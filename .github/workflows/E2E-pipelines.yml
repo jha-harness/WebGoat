@@ -190,9 +190,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: "Set up Docker Buildx"
-      uses: docker/setup-buildx-action@v3
-      
+              
+    - name: Docker Setup Buildx              
+      uses: docker/setup-buildx-action@v3.3.0
+
     - name: Build an image from Dockerfile
       run: |
         docker build -t jhaharness/webgoat:${{ github.sha }} .
@@ -218,7 +219,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: "Build and push WebGoat"
-      uses: docker/build-push-action@v5.1.0
+      uses: docker/build-push-action@v5.3.0
       with:
         context: ./
         file: ./Dockerfile
