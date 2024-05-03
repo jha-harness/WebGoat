@@ -65,7 +65,7 @@ jobs:
       permissions:
         contents: write
       # display name of the job
-      name: "Robot framework test"
+      name: "Code Build and Test"
       steps:
           # Uses an default action to checkout the code
           -   uses: actions/checkout@v4
@@ -138,55 +138,77 @@ jobs:
         with:
           sarif_file: results.sarif
 
-  codeql-analyze:
-    name: Analyze (${{ matrix.language }})
-    needs: build-and-test
-    # Runner size impacts CodeQL analysis time. To learn more, please see:
-    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
-    #   - https://gh.io/supported-runners-and-hardware-resources
-    #   - https://gh.io/using-larger-runners (GitHub.com only)
-    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
-    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+  # codeql-analyze:
+  #   name: Analyze (${{ matrix.language }})
+  #   needs: build-and-test
+  #   # Runner size impacts CodeQL analysis time. To learn more, please see:
+  #   #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+  #   #   - https://gh.io/supported-runners-and-hardware-resources
+  #   #   - https://gh.io/using-larger-runners (GitHub.com only)
+  #   # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+  #   runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+  #   timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+  #   permissions:
+  #     # required for all workflows
+  #     security-events: write
+
+  #     # required to fetch internal or private CodeQL packs
+  #     packages: read
+
+  #     # only required for workflows in private repositories
+  #     actions: read
+  #     contents: read
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #       - language: javascript-typescript
+  #         build-mode: none
+  #       # CodeQL supports the following values keywords for 'language': 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
+  #       # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
+
+  #   # Initializes the CodeQL tools for scanning.
+  #   - name: Initialize CodeQL
+  #     uses: github/codeql-action/init@v3
+  #     with:
+  #       languages: ${{ matrix.language }}
+  #       build-mode: ${{ matrix.build-mode }}
+
+  #   - name: Perform CodeQL Analysis
+  #     uses: github/codeql-action/analyze@v3
+  #     with:
+  #       category: "/language:${{matrix.language}}"
+
+  Anchore-Build-Scan:
     permissions:
-      # required for all workflows
-      security-events: write
-
-      # required to fetch internal or private CodeQL packs
-      packages: read
-
-      # only required for workflows in private repositories
-      actions: read
-      contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - language: javascript-typescript
-          build-mode: none
-        # CodeQL supports the following values keywords for 'language': 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
-        # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
+    - name: Check out the code
       uses: actions/checkout@v4
-
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag localbuild/testimage:latest
+    - name: Run the Anchore Grype scan action
+      uses: anchore/scan-action@d5aa5b6cb9414b0c7771438046ff5bcfa2854ed7
+      id: scan
       with:
-        languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+        image: "jhaharness/webgoat:latest"
+        fail-build: true
+        severity-cutoff: critical
+    - name: Upload vulnerability report
+      uses: github/codeql-action/upload-sarif@v2
       with:
-        category: "/language:${{matrix.language}}"
-
-
+        sarif_file: ${{ steps.scan.outputs.sarif }}
+        
   docker-build-and-push:
     runs-on: ubuntu-latest
-    needs: [bearer-sast, codeql-analyze]
+    needs: [bearer-sast]
     steps:
     - name: "Set up Docker Buildx"
       uses: docker/setup-buildx-action@v3
@@ -205,7 +227,9 @@ jobs:
         push: true
         platforms: linux/amd64, linux/arm64
         tags: |
-          webgoat/webgoat:${{ env.WEBGOAT_TAG_VERSION }}
-          webgoat/webgoat:latest
+          jhaharness/webgoat:${{ env.WEBGOAT_TAG_VERSION }}
+          jhaharness/webgoat:latest
         build-args: |
           webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
+
+
