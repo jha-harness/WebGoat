@@ -26,14 +26,25 @@ permissions:
 jobs:
 
   sca-scans:
+    env:
+      WORKSPACE: https://github.com/${{ github.repository }}/blob/${{ github.sha }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
     - name: Perform Scan
       uses: ShiftLeftSecurity/scan-action@master
+      with:
+        type: "credscan,java,depscan"
+    - uses: actions/upload-artifact@v1
+      with:
+        name: reports
+        path: reports
 
   build-and-test:
       needs: [sca-scans]
       runs-on: ubuntu-latest
+      permissions:
+        contents: write
       # display name of the job
       name: "Robot framework test"
       steps:
