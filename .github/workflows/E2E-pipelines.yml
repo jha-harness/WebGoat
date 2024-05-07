@@ -219,40 +219,6 @@ jobs:
           mvn --no-transfer-progress versions:set -DnewVersion=${{ env.WEBGOAT_MAVEN_VERSION }}
           mvn --no-transfer-progress install -DskipTests
 
-      - name: "Create release"
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: false
-          files: |
-            target/webgoat-${{ env.WEBGOAT_MAVEN_VERSION }}.jar
-          body: |
-           ## Version ${{ github.ref_name }}
-
-            ### New functionality
-
-            - test
-
-            ### Bug fixes
-
-            - [#743 - Character encoding errors](https://github.com/WebGoat/WebGoat/issues/743)
-
-            Full change log: https://github.com/WebGoat/WebGoat/compare/${{ github.ref_name }}...${{ github.ref_name }}
-
-
-            ## Contributors
-
-            Special thanks to the following contributors providing us with a pull request:
-
-            - Person 1
-            - Person 2
-
-            And everyone who provided feedback through Github.
-
-
-            Team WebGoat
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: "Set up QEMU"
         uses: docker/setup-qemu-action@v2.2.0
         with:
