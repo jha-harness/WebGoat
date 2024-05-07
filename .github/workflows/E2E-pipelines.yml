@@ -241,20 +241,20 @@ jobs:
           push: true
           platforms: linux/amd64, linux/arm64
           tags: |
-            webgoat/webgoat:${{ env.WEBGOAT_TAG_VERSION }}
-            webgoat/webgoat:latest
+            jhaharness/webgoat:${{ env.WEBGOAT_TAG_VERSION }}
+            jhaharness/webgoat:latest
           build-args: |
             webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
 
-      - name: "Build and push WebGoat desktop"
-        uses: docker/build-push-action@v5.1.0
-        with:
-          context: ./
-          file: ./Dockerfile_desktop
-          push: true
-          platforms: linux/amd64, linux/arm64
-          tags: |
-            webgoat/webgoat-desktop:${{ env.WEBGOAT_TAG_VERSION }}
-            webgoat/webgoat-desktop:latest
-          build-args: |
-            webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
+      # - name: "Build and push WebGoat desktop"
+      #   uses: docker/build-push-action@v5.1.0
+      #   with:
+      #     context: ./
+      #     file: ./Dockerfile_desktop
+      #     push: true
+      #     platforms: linux/amd64, linux/arm64
+      #     tags: |
+      #       webgoat/webgoat-desktop:${{ env.WEBGOAT_TAG_VERSION }}
+      #       webgoat/webgoat-desktop:latest
+      #     build-args: |
+      #       webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
