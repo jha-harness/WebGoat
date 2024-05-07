@@ -220,7 +220,7 @@ jobs:
           mvn --no-transfer-progress install -DskipTests
 
       - name: "Set up QEMU"
-        uses: docker/setup-qemu-action@v2.2.0
+        uses: docker/setup-qemu-action@v3.0.0
         with:
           platforms: all
 
