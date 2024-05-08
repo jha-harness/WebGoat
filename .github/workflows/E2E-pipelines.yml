@@ -182,34 +182,10 @@ jobs:
   #     uses: github/codeql-action/analyze@v3
   #     with:
   #       category: "/language:${{matrix.language}}"
-
-  container-build-scan:
-    name: Container Scan
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Build an image from Dockerfile
-        run: |
-          docker build -t docker.io/my-organization/my-app:${{ github.sha }} .
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'
         
   release-and-push:
     # if: github.repository == 'WebGoat/WebGoat'
     name: Release WebGoat
-    needs: container-build-scan
     runs-on: ubuntu-latest
     permissions:
         contents: write
@@ -266,3 +242,15 @@ jobs:
             jhaharness/webgoat:latest
           build-args: |
             webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'docker.io/jhaharness/webgoat:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
