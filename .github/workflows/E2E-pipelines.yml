@@ -183,10 +183,33 @@ jobs:
   #     with:
   #       category: "/language:${{matrix.language}}"
 
+  container-build-scan:
+    name: Container Scan
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t docker.io/my-organization/my-app:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
         
   release-and-push:
     # if: github.repository == 'WebGoat/WebGoat'
     name: Release WebGoat
+    needs: container-build-scan
     runs-on: ubuntu-latest
     permissions:
         contents: write
@@ -194,14 +217,12 @@ jobs:
       name: release
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: 17
           architecture: x64
-
       - name: Cache Maven packages
         uses: actions/cache@v4.0.0
         with:
@@ -245,17 +266,3 @@ jobs:
             jhaharness/webgoat:latest
           build-args: |
             webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe
-        with:
-          image-ref: 'jhaharness/webgoat:${{ env.WEBGOAT_TAG_VERSION }}'
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'
