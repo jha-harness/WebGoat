@@ -246,15 +246,16 @@ jobs:
           build-args: |
             webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
 
-      # - name: "Build and push WebGoat desktop"
-      #   uses: docker/build-push-action@v5.1.0
-      #   with:
-      #     context: ./
-      #     file: ./Dockerfile_desktop
-      #     push: true
-      #     platforms: linux/amd64, linux/arm64
-      #     tags: |
-      #       webgoat/webgoat-desktop:${{ env.WEBGOAT_TAG_VERSION }}
-      #       webgoat/webgoat-desktop:latest
-      #     build-args: |
-      #       webgoat_version=${{ env.WEBGOAT_MAVEN_VERSION }}
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe
+        with:
+          image-ref: 'jhaharness/webgoat:${{ env.WEBGOAT_TAG_VERSION }}'
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
