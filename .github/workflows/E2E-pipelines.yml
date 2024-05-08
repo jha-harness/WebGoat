@@ -24,7 +24,6 @@ permissions:
   contents: read
 
 jobs:
-
   sca-scans:
     env:
       WORKSPACE: https://github.com/${{ github.repository }}/blob/${{ github.sha }}
@@ -183,9 +182,9 @@ jobs:
   #     with:
   #       category: "/language:${{matrix.language}}"
         
-  release-and-push:
+  build-and-push:
     # if: github.repository == 'WebGoat/WebGoat'
-    name: Release WebGoat
+    name: Build & Push WebGoat
     runs-on: ubuntu-latest
     permissions: write-all        
     environment:
@@ -253,3 +252,20 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+
+  deploy-prod:
+    runs-on: 'ubuntu-latest'
+    environment: 'prod'
+    needs: [build-and-push]
+    steps:
+
+      # Download published artifact
+      - name: Download artifact
+        run: | 
+            echo 'downloading to artifact'
+
+      # Deploy to web app
+      - name: Deploy to Azure WebApp
+        run: | 
+            echo 'deploying to azure'
+        
